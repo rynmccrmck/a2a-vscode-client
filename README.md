@@ -1,8 +1,8 @@
-# A2A Agent Chat for VSCode
+# A2A Agent Client for VSCode
 
 A Visual Studio Code extension that enables debugging Agent-to-Agent (A2A) protocol compatible agents directly within your development environment.
 
-![A2A Chat Extension](https://img.shields.io/badge/VSCode-Extension-blue)
+![A2A Client Extension](https://img.shields.io/badge/VSCode-Extension-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ![Screenshot](src/assets/screenshot.png)
