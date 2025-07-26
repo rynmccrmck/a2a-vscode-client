@@ -2,7 +2,7 @@
   "name": "a2a-vscode-client",
   "displayName": "A2A Agent Client",
   "description": "Connect & Debug Agent-to-Agent (A2A) protocol compatible agents directly in VSCode",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "rynmccrmck",
   "author": "Ryan McCormack",
   "license": "MIT",
