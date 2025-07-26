@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A2A Agent Chat</title>
+    <style>
+        body { 
+            font-family: var(--vscode-font-family); 
+            color: var(--vscode-foreground); 
+            background-color: var(--vscode-editor-background); 
+            padding: 10px; 
+            margin: 0; 
+        }
+        .container { 
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh; 
+            gap: 10px; 
+        }
+        .section { 
+            border: 1px solid var(--vscode-widget-border); 
+            border-radius: 4px; 
+            padding: 10px; 
+        }
+        .status { 
+            padding: 8px; 
+            border-radius: 4px; 
+            margin: 8px 0; 
+            font-size: 12px; 
+        }
+        .status.success { 
+            background-color: var(--vscode-testing-iconPassed); 
+            color: white; 
+        }
+        .status.error { 
+            background-color: var(--vscode-testing-iconFailed); 
+            color: white; 
+        }
+        .chat-section { 
+            flex: 1; 
+            display: flex; 
+            flex-direction: column; 
+        }
+        .messages { 
+            flex: 1; 
+            overflow-y: auto; 
+            margin-bottom: 10px; 
+            padding: 8px; 
+            background-color: var(--vscode-input-background); 
+            border-radius: 4px; 
+            min-height: 200px; 
+        }
+        .message { 
+            margin-bottom: 10px; 
+            padding: 6px 10px; 
+            border-radius: 6px; 
+            max-width: 90%; 
+            word-wrap: break-word;
+        }
+        .message.user { 
+            background-color: var(--vscode-button-background); 
+            color: var(--vscode-button-foreground); 
+            margin-left: auto; 
+        }
+        .message.agent { 
+            background-color: var(--vscode-textCodeBlock-background); 
+            border: 1px solid var(--vscode-widget-border); 
+        }
+        .message.agent.streaming {
+            border-left: 3px solid var(--vscode-progressBar-background);
+            animation: pulse 1s infinite;
+        }
+        .message.status {
+            background-color: var(--vscode-notifications-background);
+            border: 1px solid var(--vscode-notifications-border);
+            font-size: 11px;
+            padding: 4px 8px;
+            margin: 2px 0;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .message.status:hover {
+            background-color: var(--vscode-list-hoverBackground);
+        }
+        .message.status .status-main {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .message.status .status-badge {
+            padding: 2px 6px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+        .message.status .status-badge.submitted {
+            background-color: var(--vscode-button-secondaryBackground);
+            color: var(--vscode-button-secondaryForeground);
+        }
+        .message.status .status-badge.working {
+            background-color: var(--vscode-progressBar-background);
+            color: white;
+        }
+        .message.status .status-badge.completed {
+            background-color: var(--vscode-testing-iconPassed);
+            color: white;
+        }
+        .message.status .status-badge.canceled {
+            background-color: var(--vscode-testing-iconSkipped);
+            color: white;
+        }
+        .message.status .status-badge.failed {
+            background-color: var(--vscode-testing-iconFailed);
+            color: white;
+        }
+        .message.status .status-badge.rejected {
+            background-color: var(--vscode-testing-iconFailed);
+            color: white;
+        }
+        .message.status .status-badge.auth-required {
+            background-color: var(--vscode-testing-iconQueued);
+            color: white;
+        }
+        .message.status .status-badge.unknown {
+            background-color: var(--vscode-descriptionForeground);
+            color: white;
+        }
+        .message.status .status-details {
+            margin-top: 4px;
+            padding-top: 4px;
+            border-top: 1px solid var(--vscode-widget-border);
+            font-family: monospace;
+            font-size: 10px;
+            color: var(--vscode-descriptionForeground);
+            display: none;
+        }
+        .message.status.expanded .status-details {
+            display: block;
+        }
+        .agent-info {
+            margin-top: 8px;
+            padding: 8px;
+            background-color: var(--vscode-textCodeBlock-background);
+            border-radius: 4px;
+            border: 1px solid var(--vscode-widget-border);
+            font-size: 11px;
+            display: none;
+        }
+        .agent-info.visible {
+            display: block;
+        }
+        .agent-info .agent-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            font-weight: bold;
+        }
+        .agent-info .agent-header .agent-name {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .agent-info .agent-header .connected-check {
+            color: var(--vscode-testing-iconPassed);
+            font-size: 14px;
+        }
+        .agent-info .agent-content {
+            transition: all 0.3s ease;
+        }
+        .agent-info.collapsed .agent-content {
+            display: none;
+        }
+        .agent-info .agent-description {
+            color: var(--vscode-descriptionForeground);
+            margin-bottom: 8px;
+            font-style: italic;
+            line-height: 1.3;
+        }
+        .agent-capabilities {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 6px;
+        }
+        .capability-badge {
+            background-color: var(--vscode-button-secondaryBackground);
+            color: var(--vscode-button-secondaryForeground);
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 9px;
+            font-weight: bold;
+        }
+        .agent-skills {
+            margin-top: 6px;
+        }
+        .skill-item {
+            background-color: var(--vscode-input-background);
+            border: 1px solid var(--vscode-input-border);
+            border-radius: 3px;
+            padding: 4px 6px;
+            margin: 2px 0;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .skill-item:hover {
+            background-color: var(--vscode-list-hoverBackground);
+        }
+        .skill-name {
+            font-weight: bold;
+            font-size: 10px;
+        }
+        .skill-description {
+            color: var(--vscode-descriptionForeground);
+            font-size: 9px;
+            margin-top: 2px;
+        }
+        .skill-examples {
+            margin-top: 4px;
+            padding-top: 4px;
+            border-top: 1px solid var(--vscode-widget-border);
+            display: none;
+        }
+        .skill-item.expanded .skill-examples {
+            display: block;
+        }
+        .skill-example {
+            background-color: var(--vscode-textCodeBlock-background);
+            padding: 2px 4px;
+            margin: 2px 0;
+            border-radius: 2px;
+            font-size: 8px;
+            font-family: monospace;
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+        .skill-example:hover {
+            border-color: var(--vscode-button-background);
+        }
+        .toggle-info {
+            font-size: 9px;
+            color: var(--vscode-button-background);
+            cursor: pointer;
+            text-decoration: underline;
+        }
+        .message.system { 
+            background-color: var(--vscode-badge-background); 
+            color: var(--vscode-badge-foreground); 
+            font-style: italic; 
+            text-align: center; 
+            font-size: 12px; 
+        }
+        @keyframes pulse {
+            0% { opacity: 0.7; }
+            50% { opacity: 1; }
+            100% { opacity: 0.7; }
+        }
+        input { 
+            width: 100%; 
+            padding: 8px; 
+            border: 1px solid var(--vscode-input-border); 
+            border-radius: 4px; 
+            background-color: var(--vscode-input-background); 
+            color: var(--vscode-input-foreground); 
+            margin: 5px 0; 
+        }
+        button { 
+            padding: 8px 16px; 
+            border: none; 
+            border-radius: 4px; 
+            background-color: var(--vscode-button-background); 
+            color: var(--vscode-button-foreground); 
+            cursor: pointer; 
+            margin: 2px; 
+        }
+        button:hover { 
+            background-color: var(--vscode-button-hoverBackground); 
+        }
+        button:disabled { 
+            opacity: 0.5; 
+            cursor: not-allowed; 
+        }
+        .input-row { 
+            display: flex; 
+            gap: 8px; 
+            align-items: center; 
+        }
+        .input-row input { 
+            flex: 1; 
+            margin: 0; 
+        }
+        .session-info { 
+            font-size: 11px; 
+            color: var(--vscode-descriptionForeground); 
+            margin-bottom: 8px; 
+        }
+        .toggle-group { 
+            display: flex; 
+            border: 1px solid var(--vscode-input-border); 
+            border-radius: 4px; 
+            overflow: hidden; 
+            margin: 5px 0; 
+        }
+        .toggle-group button { 
+            border-radius: 0; 
+            margin: 0; 
+            background: var(--vscode-input-background); 
+            color: var(--vscode-input-foreground); 
+        }
+        .toggle-group button.active { 
+            background: var(--vscode-button-background); 
+            color: var(--vscode-button-foreground); 
+        }
+        pre { 
+            background-color: var(--vscode-textCodeBlock-background); 
+            padding: 8px; 
+            border-radius: 4px; 
+            overflow-x: auto; 
+            font-size: 11px; 
+            margin: 4px 0; 
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Agent Connection Section -->
+        <div class="section">
+            <h3>Agent Connection</h3>
+            <div class="input-row">
+                <input type="text" id="agentUrl" placeholder="Agent URL" value="http://localhost:10000">
+                <button onclick="checkAgent()" id="checkBtn">Check Agent</button>
+            </div>
+            <div id="agentStatus"></div>
+            <div id="agentInfo" class="agent-info"></div>
+        </div>
+        
+            <!-- Chat Section -->
+        <div class="section chat-section">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h3>Chat</h3>
+                </div>
+                <div>
+                    <button onclick="newTask()" id="newTaskBtn" disabled>New Task</button>
+                </div>
+            </div>
+            <div class="session-info">
+                <strong>Task ID:</strong> <span id="taskId">None</span>
+            </div>
+            
+            <!-- Streaming Toggle -->
+            <div class="toggle-group">
+                <button onclick="setStreaming(false)" id="sendBtn" class="active">Send</button>
+                <button onclick="setStreaming(true)" id="streamBtn">Stream</button>
+            </div>
+            
+            <div class="messages" id="messages">
+                <div class="message system">Enter an agent URL above and click "Check Agent" to start!</div>
+            </div>
+            
+            <div class="input-row">
+                <input type="text" id="messageInput" placeholder="Type your message..." disabled>
+                <button onclick="sendMessage()" id="sendMessageBtn" disabled>Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const vscode = acquireVsCodeApi();
+        let agentConnected = false;
+        let currentAgentUrl = '';
+        let useStreaming = false;
+        let messageSequence = 0;
+        let currentTaskId = null;
+        let currentContextId = null;
+
+        function checkAgent() {
+            const url = document.getElementById('agentUrl').value.trim();
+            if (!url) return;
+            
+            currentAgentUrl = url;
+            document.getElementById('checkBtn').disabled = true;
+            showStatus('Checking agent...', null);
+            
+            vscode.postMessage({ type: 'checkAgent', url: url });
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            
+            if (!message || !agentConnected) return;
+            
+            addMessage(message, 'user');
+            input.value = '';
+            disableSendButton();
+            
+            // Reset message tracking for new interaction
+            messageSequence = 0;
+            
+            vscode.postMessage({ 
+                type: 'sendMessage', 
+                url: currentAgentUrl, 
+                message: message,
+                useStreaming: useStreaming,
+                taskId: currentTaskId,
+                contextId: currentContextId
+            });
+        }
+
+        function newTask() {
+            currentTaskId = null;
+            currentContextId = null;
+            updateTaskDisplay();
+            
+            const messagesDiv = document.getElementById('messages');
+            messagesDiv.innerHTML = '<div class="message system">🆕 New task started - send a message to begin!</div>';
+            
+            addMessage('Task reset - ready for new conversation', 'system');
+            
+            // Re-enable send button
+            enableSendButton();
+        }
+
+        function getTaskStatus() {
+            if (!currentTaskId) {
+                addMessage('No active task to check', 'system');
+                return;
+            }
+            
+            // Disable send button while checking status
+            disableSendButton();
+            
+            vscode.postMessage({
+                type: 'getTaskStatus',
+                url: currentAgentUrl,
+                taskId: currentTaskId
+            });
+        }
+
+        function updateTaskDisplay() {
+            console.log('Updating task display:', { taskId: currentTaskId });
+            document.getElementById('taskId').textContent = currentTaskId || 'None';
+        }
+
+        function enableSendButton() {
+            document.getElementById('sendMessageBtn').disabled = false;
+        }
+
+        function disableSendButton() {
+            document.getElementById('sendMessageBtn').disabled = true;
+        }
+
+        function setStreaming(streaming) {
+            useStreaming = streaming;
+            document.getElementById('sendBtn').className = streaming ? '' : 'active';
+            document.getElementById('streamBtn').className = streaming ? 'active' : '';
+        }
+
+        function showStatus(text, success) {
+            const statusDiv = document.getElementById('agentStatus');
+            
+            if (success === false) {
+                // Only show error status
+                statusDiv.textContent = text;
+                statusDiv.className = 'status error';
+            } else {
+                // Hide status for success (shown in agent info instead)
+                statusDiv.textContent = '';
+                statusDiv.className = '';
+            }
+        }
+
+        function addMessage(text, sender, streaming = false, data = null) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message ' + sender + (streaming ? ' streaming' : '');
+            
+            if (sender === 'agent' && typeof text === 'object') {
+                const pre = document.createElement('pre');
+                pre.textContent = JSON.stringify(text, null, 2);
+                messageDiv.appendChild(pre);
+            } else {
+                messageDiv.textContent = text;
+            }
+            
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            return messageDiv;
+        }
+
+        function addStatusMessage(data) {
+            // Only show status without message content for pure status updates
+            if (data.statusOnly) {
+                const messagesDiv = document.getElementById('messages');
+                const statusDiv = document.createElement('div');
+                statusDiv.className = 'message status';
+                
+                const mainDiv = document.createElement('div');
+                mainDiv.className = 'status-main';
+                
+                const badge = document.createElement('span');
+                badge.className = `status-badge ${data.status.state}`;
+                badge.textContent = data.status.state.toUpperCase().replace('-', '-');
+                mainDiv.appendChild(badge);
+                
+                if (data.status.final) {
+                    const finalSpan = document.createElement('span');
+                    finalSpan.textContent = '✓ Final';
+                    finalSpan.style.color = 'var(--vscode-testing-iconPassed)';
+                    finalSpan.style.fontSize = '10px';
+                    mainDiv.appendChild(finalSpan);
+                }
+                
+                statusDiv.appendChild(mainDiv);
+                
+                const detailsDiv = document.createElement('div');
+                detailsDiv.className = 'status-details';
+                detailsDiv.innerHTML = `
+                    <div>Task ID: ${data.status.taskId}</div>
+                    <div>Context ID: ${data.status.contextId}</div>
+                    <div>Timestamp: ${new Date(data.status.timestamp).toLocaleTimeString()}</div>
+                `;
+                statusDiv.appendChild(detailsDiv);
+                
+                statusDiv.addEventListener('click', () => {
+                    statusDiv.classList.toggle('expanded');
+                });
+                
+                messagesDiv.appendChild(statusDiv);
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            }
+        }
+
+        function processStreamingData(data) {
+            messageSequence++;
+            
+            // Update task info from streaming data if we don't have it yet
+            if (data.status && !currentTaskId) {
+                if (data.status.taskId) {
+                    currentTaskId = data.status.taskId;
+                    updateTaskDisplay();
+                    console.log('Updated taskId from stream:', currentTaskId);
+                }
+                // We track contextId internally but don't display it
+                if (data.status.contextId) {
+                    currentContextId = data.status.contextId;
+                }
+            }
+            
+            if (data.statusOnly) {
+                // Pure status update without message content
+                addStatusMessage(data);
+            } else if (data.text && data.text.trim()) {
+                // Message with text content - treat each as separate message
+                const messageDiv = addMessage(data.text, 'agent');
+                
+                // Add a small status indicator to the message if we have status info
+                if (data.status) {
+                    const statusBadge = document.createElement('span');
+                    statusBadge.className = `status-badge ${data.status.state}`;
+                    statusBadge.textContent = data.status.state.toUpperCase().replace('-', '-');
+                    statusBadge.style.fontSize = '9px';
+                    statusBadge.style.marginLeft = '8px';
+                    statusBadge.style.opacity = '0.7';
+                    messageDiv.appendChild(statusBadge);
+                    
+                    // Add click handler for message details
+                    messageDiv.style.cursor = 'pointer';
+                    messageDiv.title = 'Click for details';
+                    messageDiv.addEventListener('click', () => {
+                        const details = `
+Task: ${data.status.taskId}
+Context: ${data.status.contextId}
+Message ID: ${data.messageId || 'N/A'}
+Timestamp: ${new Date(data.status.timestamp).toLocaleString()}
+State: ${data.status.state}
+Final: ${data.status.final}
+                        `.trim();
+                        alert(details);
+                    });
+                }
+            }
+        }
+
+        function showAgentInfo(agentCard) {
+            const agentInfoDiv = document.getElementById('agentInfo');
+            
+            // Create capabilities badges
+            const capabilities = [];
+            if (agentCard.capabilities?.streaming) capabilities.push('Streaming');
+            if (agentCard.capabilities?.pushNotifications) capabilities.push('Push Notifications');
+            
+            const capabilityBadges = capabilities.map(cap => 
+                `<span class="capability-badge">${cap}</span>`
+            ).join('');
+            
+            // Create skills list
+            const skillsHtml = agentCard.skills?.map(skill => `
+                <div class="skill-item" onclick="toggleSkill(this)">
+                    <div class="skill-name">${skill.name}</div>
+                    <div class="skill-description">${skill.description}</div>
+                    <div class="skill-examples">
+                        ${skill.examples?.map(example => 
+                            `<div class="skill-example" onclick="useExample('${example.replace(/'/g, "\\'")}'); event.stopPropagation();">${example}</div>`
+                        ).join('') || ''}
+                    </div>
+                </div>
+            `).join('') || '<div style="color: var(--vscode-descriptionForeground);">No skills defined</div>';
+            
+            agentInfoDiv.innerHTML = `
+                <div class="agent-header">
+                    <div class="agent-name">
+                        <span>${agentCard.name} v${agentCard.version}</span>
+                        <span class="connected-check">✓</span>
+                    </div>
+                    <span class="toggle-info" onclick="toggleAgentInfo()">Hide Details</span>
+                </div>
+                <div class="agent-content">
+                    <div class="agent-description">${agentCard.description || 'No description provided'}</div>
+                    <div class="agent-capabilities">${capabilityBadges}</div>
+                    <div class="agent-skills">
+                        <strong>Skills (click to expand):</strong>
+                        ${skillsHtml}
+                    </div>
+                </div>
+            `;
+            
+            agentInfoDiv.classList.add('visible');
+        }
+
+        function toggleAgentInfo() {
+            const agentInfoDiv = document.getElementById('agentInfo');
+            const toggleText = agentInfoDiv.querySelector('.toggle-info');
+            
+            if (agentInfoDiv.classList.contains('collapsed')) {
+                agentInfoDiv.classList.remove('collapsed');
+                toggleText.textContent = 'Hide Details';
+            } else {
+                agentInfoDiv.classList.add('collapsed');
+                toggleText.textContent = 'Show Details';
+            }
+        }
+
+        function toggleSkill(skillElement) {
+            skillElement.classList.toggle('expanded');
+        }
+
+        function useExample(example) {
+            const messageInput = document.getElementById('messageInput');
+            messageInput.value = example;
+            messageInput.focus();
+        }
+
+        document.getElementById('messageInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        // Handle messages from extension
+        window.addEventListener('message', event => {
+            const message = event.data;
+            console.log('Received message:', message);
+            
+            switch (message.type) {
+                case 'taskInfo':
+                    currentTaskId = message.taskId;
+                    currentContextId = message.contextId;
+                    updateTaskDisplay();
+                    break;
+
+                case 'agentChecked':
+                    document.getElementById('checkBtn').disabled = false;
+                    
+                    if (message.success) {
+                        agentConnected = true;
+                        const agent = message.agent;
+                        showStatus('', true); // Clear any error status
+                        showAgentInfo(agent);
+                        document.getElementById('messageInput').disabled = false;
+                        document.getElementById('sendMessageBtn').disabled = false;
+                        document.getElementById('newTaskBtn').disabled = false;
+                        updateTaskDisplay();
+                        // No longer adding "Connected to agent" message - shown in agent header
+                    } else {
+                        agentConnected = false;
+                        showStatus('Connection failed: ' + message.error, false);
+                        document.getElementById('agentInfo').classList.remove('visible');
+                        document.getElementById('messageInput').disabled = true;
+                        document.getElementById('sendMessageBtn').disabled = true;
+                        document.getElementById('newTaskBtn').disabled = true;
+                    }
+                    break;
+
+                case 'taskCreated':
+                    currentTaskId = message.taskId;
+                    currentContextId = message.contextId;
+                    updateTaskDisplay();
+                    addMessage(`🎯 Task created: ${message.taskId}`, 'system');
+                    break;
+                    
+                case 'messageResponse':
+                    if (message.streaming) {
+                        console.log('Streaming chunk received:', message.data);
+                        
+                        // Filter out raw JSON data that shouldn't be displayed
+                        if (message.data.raw || message.data.error) {
+                            console.log('Skipping raw/error data:', message.data);
+                            break;
+                        }
+                        
+                        processStreamingData(message.data);
+                        
+                        // Check if this is the final streaming message
+                        if (message.data.status?.final) {
+                            console.log('Final streaming message detected - enabling send button');
+                            enableSendButton();
+                        }
+                        break;
+                    }
+
+                    // Normal response after stream or single-shot
+                    console.log('Non-streaming response received - enabling send button');
+                    enableSendButton();
+                    
+                    if (message.success) {
+                        // Handle task creation from response
+                        if (message.data?.result?.id && message.data?.result?.kind === 'task') {
+                            currentTaskId = message.data.result.id;
+                            currentContextId = message.data.result.contextId;
+                            updateTaskDisplay();
+                            addMessage(`🎯 Task created: ${currentTaskId}`, 'system');
+                        }
+                        
+                        // Also check streaming data for task info updates
+                        if (message.data?.status?.taskId) {
+                            if (message.data.status.taskId !== currentTaskId) {
+                                currentTaskId = message.data.status.taskId;
+                                updateTaskDisplay();
+                                console.log('Updated taskId from non-streaming response:', currentTaskId);
+                            }
+                            // Track contextId internally but don't display
+                            if (message.data.status.contextId) {
+                                currentContextId = message.data.status.contextId;
+                            }
+                        }
+                        
+                        const result = message.data.result || message.data;
+                        let responseText = '';
+                        
+                        if (result?.parts) {
+                            result.parts.forEach(part => {
+                                if (part.kind === 'text') {
+                                    responseText += part.text;
+                                }
+                            });
+                        } else if (result?.message?.parts) {
+                            result.message.parts.forEach(part => {
+                                if (part.kind === 'text') {
+                                    responseText += part.text;
+                                }
+                            });
+                        } else if (typeof result === 'string') {
+                            responseText = result;
+                        } else if (result?.kind !== 'task') {
+                            responseText = JSON.stringify(result, null, 2);
+                        }
+                        
+                        if (!message.streaming && responseText) {
+                            addMessage(responseText || 'Empty response', 'agent');
+                        }
+                    } else {
+                        addMessage('Error: ' + message.error, 'system');
+                    }
+                    break;
+
+                case 'streamComplete':
+                    console.log('Stream completed - re-enabling send button');
+                    enableSendButton();
+                    addMessage('🔄 Stream completed', 'system');
+                    break;
+
+                case 'error':
+                    addMessage('Extension Error: ' + message.error, 'system');
+                    enableSendButton();
+                    break;
+            }
+        });
+    </script>
+</body>
+</html>
