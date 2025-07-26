@@ -5,14 +5,7 @@ A Visual Studio Code extension that enables debugging Agent-to-Agent (A2A) proto
 ![A2A Chat Extension](https://img.shields.io/badge/VSCode-Extension-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-## ✨ Features
-
-- 🤖 **Agent Discovery**: Automatically discover and connect to A2A-compatible agents
-- 💬 **Real-time Chat**: Interactive chat interface with streaming support
-- 🔍 **Agent Inspection**: View agent capabilities, skills, and metadata
-- 🎯 **Task Management**: Create and manage conversation tasks with proper context
-- 🌊 **Streaming Support**: Real-time message streaming for responsive interactions
-- 📋 **Rich UI**: Native VSCode theming with expandable agent information
+![Screenshot](src/assets/screenshot.png)
 
 ## 🚀 Quick Start
 
