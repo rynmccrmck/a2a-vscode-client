@@ -11,7 +11,7 @@ A Visual Studio Code extension that enables debugging Agent-to-Agent (A2A) proto
 
 1. **Install the Extension**
 
-   - Download from VSCode Marketplace (coming soon) or install from VSIX
+   - Download from VSCode Marketplace
    - Or clone and build locally
 
 2. **Connect to an Agent**
@@ -25,27 +25,25 @@ A Visual Studio Code extension that enables debugging Agent-to-Agent (A2A) proto
    - Choose between single-shot or streaming responses
    - View agent capabilities and suggested prompts
 
-## 📋 Requirements
+## 📋 Local Requirements
 
 - **VSCode**: Version 1.74.0 or higher
 - **A2A Agent**: A running agent that implements the A2A protocol
-- **Network Access**: HTTP/HTTPS connectivity to your agent
 
 ## 🔧 Installation
 
 ### From Marketplace
 
 ```bash
-# Coming soon - install directly from VSCode marketplace
-code --install-extension a2a-chat
+code --install-extension a2a-client
 ```
 
 ### Manual Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/rynmccrmck/a2a-chat-vscode.git
-cd a2a-chat-vscode
+git clone https://github.com/rynmccrmck/a2a-vscode-client.git
+cd a2a-vscode-client
 
 # Install dependencies and compile
 npm install
@@ -61,9 +59,9 @@ vsce package
 ### Basic Chat
 
 1. Open the A2A Chat view from the sidebar
-2. Enter your agent's base URL
+2. Enter the agent's base URL
 3. Click "Check Agent" to verify connection
-4. Start chatting with your agent
+4. Start chatting with theyour agent
 
 ### Agent Card
 
@@ -108,8 +106,8 @@ We welcome contributions! Please see our contributing guidelines:
 
 ```bash
 # Clone and setup
-git clone https://github.com/yourusername/a2a-chat-vscode.git
-cd a2a-chat-vscode
+git clone https://github.com/yourusername/a2a-vscode-client.git
+cd a2a-vscode-client
 npm install
 
 # Start development
