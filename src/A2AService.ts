@@ -91,42 +91,21 @@ export class A2AService {
                         
                         try {
                             const parsed = JSON.parse(eventData);
-                            
+
                             if (parsed.result?.kind === 'status-update') {
-                                const status = parsed.result.status;
-                                const message = status.message;
-                                
-                                const statusInfo = {
-                                    state: status.state,
-                                    timestamp: status.timestamp,
-                                    final: parsed.result.final,
-                                    taskId: parsed.result.taskId,
-                                    contextId: parsed.result.contextId
-                                };
-                                
-                                if (message?.parts) {
-                                    const textParts = message.parts
-                                        .filter((p: any) => p.kind === 'text')
-                                        .map((p: any) => p.text);
-                                    
-                                    if (textParts.length > 0) {
-                                        onStream({
-                                            text: textParts.join(''),
-                                            status: statusInfo,
-                                            messageId: message.messageId,
-                                            role: message.role
-                                        });
-                                    }
-                                } else {
-                                    onStream({
-                                        text: '',
-                                        status: statusInfo,
-                                        statusOnly: true
-                                    });
-                                }
-                            } else {
-                                this.logger(`Unknown event format: ${JSON.stringify(parsed)}`, 'WARN');
+                                this.handleStatusUpdate(parsed, onStream);
+                            } else if (parsed.result?.kind === 'artifact-update') {
+                                this.handleArtifactUpdate(parsed, onStream);
+                            } else if (parsed.result?.kind === 'task') {
+                                onStream({
+                                    type: 'task-update',
+                                    taskId: parsed.result.id,
+                                    contextId: parsed.result.contextId,
+                                    state: parsed.result.status?.state,
+                                    timestamp: new Date().toISOString()
+                                });
                             }
+
                         } catch (parseError) {
                             this.logger(`Failed to parse stream data: ${parseError}`, 'ERROR');
                             onStream({ text: eventData, error: true });
@@ -162,5 +141,82 @@ export class A2AService {
             this.logger(`Non-streaming request failed: ${errorMsg}`, 'ERROR');
             throw error;
         }
+    }
+
+    private handleStatusUpdate(parsed: any, onStream: (data: any) => void) {
+        const result = parsed.result;
+        const status = result.status;
+        const message = status.message;
+        
+        const statusInfo = {
+            state: status.state,
+            timestamp: status.timestamp,
+            final: result.final,
+            taskId: result.taskId,
+            contextId: result.contextId
+        };
+        
+        if (message?.parts) {
+            const textParts = message.parts
+                .filter((p: any) => p.kind === 'text')
+                .map((p: any) => p.text);
+            
+            if (textParts.length > 0) {
+                onStream({
+                    type: 'status-update',
+                    text: textParts.join(''),
+                    status: statusInfo,
+                    messageId: message.messageId,
+                    role: message.role
+                });
+            } else {
+                onStream({
+                    type: 'status-update',
+                    text: '',
+                    status: statusInfo,
+                    statusOnly: true
+                });
+            }
+        } else {
+            onStream({
+                type: 'status-update',
+                text: '',
+                status: statusInfo,
+                statusOnly: true
+            });
+        }
+    }
+
+    private handleArtifactUpdate(parsed: any, onStream: (data: any) => void) {
+        const result = parsed.result;
+        const artifact = result.artifact;
+        
+        this.logger(`Artifact update: ${artifact.name} (append: ${result.append}, lastChunk: ${result.lastChunk})`);
+        
+        // Extract content from artifact parts
+        let textContent = '';
+        let dataContent = {};
+        
+        if (artifact.parts) {
+            artifact.parts.forEach((part: any) => {
+                if (part.kind === 'text') {
+                    textContent += part.text;
+                } else if (part.kind === 'data') {
+                    dataContent = { ...dataContent, ...part.data };
+                }
+            });
+        }
+        
+        onStream({
+            type: 'artifact-update',
+            artifactId: artifact.artifactId,
+            name: artifact.name || `Artifact ${artifact.artifactId}`,
+            textContent,
+            dataContent,
+            append: result.append,
+            lastChunk: result.lastChunk,
+            taskId: result.taskId,
+            timestamp: new Date().toISOString()
+        });
     }
 }
