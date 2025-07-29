@@ -82,16 +82,6 @@ Configure the default agent url for the extension through VSCode settings:
 }
 ```
 
-## 🏗️ Architecture
-
-The extension is built with clean separation of concerns:
-
-- **`extension.ts`**: Entry point and dependency injection
-- **`ChatProvider.ts`**: VSCode webview UI management
-- **`A2AService.ts`**: A2A protocol implementation
-- **`HttpClient.ts`**: HTTP communication layer
-- **`templates/chat.html`**: Rich web-based chat interface
-
 ## 🤝 Contributing
 
 We welcome contributions! Please see our contributing guidelines:
