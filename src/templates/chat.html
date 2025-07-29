@@ -295,23 +295,6 @@
             color: var(--vscode-descriptionForeground); 
             margin-bottom: 8px; 
         }
-        .toggle-group { 
-            display: flex; 
-            border: 1px solid var(--vscode-input-border); 
-            border-radius: 4px; 
-            overflow: hidden; 
-            margin: 5px 0; 
-        }
-        .toggle-group button { 
-            border-radius: 0; 
-            margin: 0; 
-            background: var(--vscode-input-background); 
-            color: var(--vscode-input-foreground); 
-        }
-        .toggle-group button.active { 
-            background: var(--vscode-button-background); 
-            color: var(--vscode-button-foreground); 
-        }
         pre { 
             background-color: var(--vscode-textCodeBlock-background); 
             padding: 8px; 
@@ -319,6 +302,120 @@
             overflow-x: auto; 
             font-size: 11px; 
             margin: 4px 0; 
+        }
+        /* Simple collapsible styles */
+        .collapsible-details {
+            margin-top: 4px;
+            padding: 8px;
+            background-color: var(--vscode-input-background);
+            border-radius: 3px;
+            border: 1px solid var(--vscode-widget-border);
+            display: none;
+            font-size: 10px;
+            font-family: monospace;
+            clear: both;
+        }
+
+        .collapsible-details.expanded {
+            display: block;
+        }
+
+        .details-toggle {
+            margin-left: 8px;
+            font-size: 10px;
+            color: var(--vscode-button-background);
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        .details-toggle:hover {
+            color: var(--vscode-button-hoverBackground);
+        }
+
+        .message.artifact {
+            border-left: 3px solid var(--vscode-button-background);
+            background-color: var(--vscode-textCodeBlock-background);
+            position: relative;
+        }
+
+        .artifact-header {
+            font-weight: bold;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .artifact-status {
+            font-size: 10px;
+            color: var(--vscode-descriptionForeground);
+        }
+
+        .artifact-name {
+            font-size: 11px;
+            color: var(--vscode-descriptionForeground);
+            margin: 4px 12px 8px 12px;
+            font-style: italic;
+        }
+
+        .message.task-update {
+            border-left: 3px solid var(--vscode-testing-iconPassed);
+            background-color: var(--vscode-textCodeBlock-background);
+            position: relative;
+        }
+
+        .message.status-detail {
+            border-left: 3px solid var(--vscode-progressBar-background);
+            background-color: var(--vscode-textCodeBlock-background);
+            position: relative;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--vscode-input-background);
+            border: 1px solid var(--vscode-input-border);
+            transition: 0.2s;
+            border-radius: 24px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 2px;
+            top: 2px;
+            background-color: var(--vscode-foreground);
+            transition: 0.2s;
+            border-radius: 50%;
+        }
+
+        input:checked + .toggle-slider {
+            background-color: var(--vscode-button-background);
+            border-color: var(--vscode-button-background);
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(20px);
+            background-color: white;
         }
     </style>
 </head>
@@ -350,11 +447,14 @@
             </div>
             
             <!-- Streaming Toggle -->
-            <div class="toggle-group">
-                <button onclick="setStreaming(false)" id="sendBtn" class="active">Send</button>
-                <button onclick="setStreaming(true)" id="streamBtn">Stream</button>
+            <div style="margin: 5px 0; display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 12px;">Streaming:</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="streamingToggle" checked onchange="toggleStreaming()">
+                    <span class="toggle-slider"></span>
+                </label>
             </div>
-            
+                        
             <div class="messages" id="messages">
                 <div class="message system">Enter an agent URL above and click "Check Agent" to start!</div>
             </div>
@@ -370,7 +470,7 @@
         const vscode = acquireVsCodeApi();
         let agentConnected = false;
         let currentAgentUrl = '';
-        let useStreaming = false;
+        let useStreaming = true;
         let messageSequence = 0;
         let currentTaskId = null;
         let currentContextId = null;
@@ -452,10 +552,10 @@
             document.getElementById('sendMessageBtn').disabled = true;
         }
 
-        function setStreaming(streaming) {
-            useStreaming = streaming;
-            document.getElementById('sendBtn').className = streaming ? '' : 'active';
-            document.getElementById('streamBtn').className = streaming ? 'active' : '';
+        function toggleStreaming() {
+            const checkbox = document.getElementById('streamingToggle');
+            useStreaming = checkbox.checked;
+            console.log('Streaming mode:', useStreaming ? 'enabled' : 'disabled');
         }
 
         function showStatus(text, success) {
@@ -537,51 +637,222 @@
             messageSequence++;
             
             // Update task info from streaming data if we don't have it yet
-            if (data.status && !currentTaskId) {
-                if (data.status.taskId) {
-                    currentTaskId = data.status.taskId;
-                    updateTaskDisplay();
-                    console.log('Updated taskId from stream:', currentTaskId);
+            if (data.taskId && !currentTaskId) {
+                currentTaskId = data.taskId;
+                updateTaskDisplay();
+                console.log('Updated taskId from stream:', currentTaskId);
+            }
+            if (data.contextId && !currentContextId) {
+                currentContextId = data.contextId;
+            }
+            
+            // Handle different event types
+            switch (data.type) {
+                case 'status-update':
+                    handleStatusUpdate(data);
+                    break;
+                case 'artifact-update':
+                    handleArtifactUpdate(data);
+                    break;
+                case 'task-update':
+                    handleTaskUpdate(data);
+                    break;
+                default:
+                    // Fallback for old format
+                    handleLegacyFormat(data);
+            }
+        }
+
+        function handleStatusUpdate(data) {
+            if (data.statusOnly && !data.text) {
+                // Pure status update without message content - show as badge only
+                addStatusMessage(data);
+            } else if (data.text && data.text.trim()) {
+                // Message with text content
+                const messageDiv = addMessage(data.text, 'agent');
+                
+                // Add header and details toggle if we have data parts
+                if (data.status) {
+                    // Convert to structured message with header
+                    messageDiv.classList.add('status-detail');
+                    
+                    // Create text content div
+                    const textDiv = document.createElement('div');
+                    textDiv.textContent = data.text;
+                    
+                    // Create header
+                    const header = document.createElement('div');
+                    header.className = 'artifact-header';
+                    header.innerHTML = `
+                        <span>💬 Status Update</span>
+                        <span class="artifact-status">${data.status.state}</span>
+                    `;
+                    
+                    // Clear original content and rebuild structure
+                    messageDiv.innerHTML = '';
+                    messageDiv.appendChild(header);
+                    messageDiv.appendChild(textDiv);
+                    
+                    addDetailsToggle(messageDiv, {
+                        'State': data.status.state,
+                        'Task ID': data.status.taskId,
+                        'Timestamp': new Date(data.status.timestamp).toLocaleString(),
+                        'Final': data.status.final
+                    }, 'Status Details');
                 }
-                // We track contextId internally but don't display it
-                if (data.status.contextId) {
-                    currentContextId = data.status.contextId;
+            }
+        }
+
+        function handleArtifactUpdate(data) {
+            console.log('Artifact update received:', data);
+            
+            let artifactDiv = document.getElementById(`artifact-${data.artifactId}`);
+            
+            if (!artifactDiv) {
+                // Create new artifact message
+                artifactDiv = document.createElement('div');
+                artifactDiv.id = `artifact-${data.artifactId}`;
+                artifactDiv.className = 'message artifact';
+                
+                // Add header with icon and type
+                const header = document.createElement('div');
+                header.className = 'artifact-header';
+                header.innerHTML = `
+                    <span>📎 Artifact</span>
+                    <span class="artifact-status">${data.lastChunk ? '✓ Complete' : '⏳ In Progress'}</span>
+                `;
+                artifactDiv.appendChild(header);
+                
+                // Add artifact name as subtitle
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'artifact-name';
+                nameDiv.textContent = data.name;
+                artifactDiv.appendChild(nameDiv);
+                
+                // Add content area
+                const content = document.createElement('div');
+                content.id = `artifact-content-${data.artifactId}`;
+                artifactDiv.appendChild(content);
+                
+                document.getElementById('messages').appendChild(artifactDiv);
+            }
+            
+            // Update content
+            updateArtifactContent(artifactDiv, data);
+            
+            // Update status
+            const statusSpan = artifactDiv.querySelector('.artifact-status');
+            if (statusSpan) {
+                statusSpan.textContent = data.lastChunk ? '✓ Complete' : '⏳ In Progress';
+            }
+            
+            scrollToBottom();
+        }
+        function handleTaskUpdate(data) {
+            const taskDiv = document.createElement('div');
+            taskDiv.className = 'message task-update';
+            
+            // Add header
+            const header = document.createElement('div');
+            header.className = 'artifact-header';
+            header.innerHTML = `
+                <span>🎯 Task Update</span>
+                <span class="artifact-status">${data.state}</span>
+            `;
+            taskDiv.appendChild(header);
+            
+            // Add content
+            const content = document.createElement('div');
+            content.textContent = `Task ${data.taskId.substring(0, 8)}... changed to ${data.state}`;
+            taskDiv.appendChild(content);
+            
+            // Add details toggle
+            addDetailsToggle(taskDiv, {
+                'Task ID': data.taskId,
+                'Context ID': data.contextId,
+                'State': data.state,
+                'Timestamp': new Date(data.timestamp).toLocaleString()
+            }, 'Task Details');
+            
+            document.getElementById('messages').appendChild(taskDiv);
+            scrollToBottom();
+        }
+
+        function handleLegacyFormat(data) {
+            // Keep existing behavior for backward compatibility
+            if (data.statusOnly) {
+                addStatusMessage(data);
+            } else if (data.text && data.text.trim()) {
+                addMessage(data.text, 'agent');
+            }
+        }
+
+        function updateArtifactContent(artifactDiv, data) {
+            const contentDiv = artifactDiv.querySelector(`#artifact-content-${data.artifactId.replace('artifact-', '')}`);
+            
+            if (data.append) {
+                // Append to existing content
+                if (data.textContent) {
+                    const textSpan = document.createElement('span');
+                    textSpan.textContent = data.textContent;
+                    contentDiv.appendChild(textSpan);
+                }
+            } else {
+                // Replace content
+                if (data.textContent) {
+                    contentDiv.textContent = data.textContent;
                 }
             }
             
-            if (data.statusOnly) {
-                // Pure status update without message content
-                addStatusMessage(data);
-            } else if (data.text && data.text.trim()) {
-                // Message with text content - treat each as separate message
-                const messageDiv = addMessage(data.text, 'agent');
-                
-                // Add a small status indicator to the message if we have status info
-                if (data.status) {
-                    const statusBadge = document.createElement('span');
-                    statusBadge.className = `status-badge ${data.status.state}`;
-                    statusBadge.textContent = data.status.state.toUpperCase().replace('-', '-');
-                    statusBadge.style.fontSize = '9px';
-                    statusBadge.style.marginLeft = '8px';
-                    statusBadge.style.opacity = '0.7';
-                    messageDiv.appendChild(statusBadge);
-                    
-                    // Add click handler for message details
-                    messageDiv.style.cursor = 'pointer';
-                    messageDiv.title = 'Click for details';
-                    messageDiv.addEventListener('click', () => {
-                        const details = `
-Task: ${data.status.taskId}
-Context: ${data.status.contextId}
-Message ID: ${data.messageId || 'N/A'}
-Timestamp: ${new Date(data.status.timestamp).toLocaleString()}
-State: ${data.status.state}
-Final: ${data.status.final}
-                        `.trim();
-                        alert(details);
-                    });
-                }
+            // Add details toggle for data content
+            if (data.dataContent && Object.keys(data.dataContent).length > 0) {
+                addDetailsToggle(artifactDiv, data.dataContent, 'Data');
             }
+        }
+
+        function addDetailsToggle(parentElement, detailsData, label = 'Details') {
+            // Check if toggle already exists
+            if (parentElement.querySelector('.details-toggle')) {
+                return;
+            }
+            
+            // Create a wrapper for the toggle that goes on same line as text
+            const toggleSpan = document.createElement('span');
+            toggleSpan.className = 'details-toggle';
+            toggleSpan.textContent = `▼ ${label}`;
+            toggleSpan.onclick = () => toggleDetails(parentElement, toggleSpan);
+            
+            // Create details div that will appear on next line
+            const detailsDiv = document.createElement('div');
+            detailsDiv.className = 'collapsible-details';
+            
+            if (typeof detailsData === 'object') {
+                detailsDiv.innerHTML = `<pre>${JSON.stringify(detailsData, null, 2)}</pre>`;
+            } else {
+                detailsDiv.textContent = detailsData;
+            }
+            
+            // Add toggle to the end of the text content
+            parentElement.appendChild(toggleSpan);
+            // Add details div as a separate block below
+            parentElement.appendChild(detailsDiv);
+        }
+
+        function toggleDetails(parentElement, toggleSpan) {
+            const details = parentElement.querySelector('.collapsible-details');
+            
+            if (details.classList.contains('expanded')) {
+                details.classList.remove('expanded');
+                toggleSpan.textContent = toggleSpan.textContent.replace('▲', '▼');
+            } else {
+                details.classList.add('expanded');
+                toggleSpan.textContent = toggleSpan.textContent.replace('▼', '▲');
+            }
+        }
+
+        function scrollToBottom() {
+            const messagesDiv = document.getElementById('messages');
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
 
         function showAgentInfo(agentCard) {
@@ -615,7 +886,7 @@ Final: ${data.status.final}
                         <span>${agentCard.name} v${agentCard.version}</span>
                         <span class="connected-check">✓</span>
                     </div>
-                    <span class="toggle-info" onclick="toggleAgentInfo()">Hide Details</span>
+                    <span class="toggle-info" onclick="toggleAgentInfo()">Show Details</span>
                 </div>
                 <div class="agent-content">
                     <div class="agent-description">${agentCard.description || 'No description provided'}</div>
@@ -627,7 +898,7 @@ Final: ${data.status.final}
                 </div>
             `;
             
-            agentInfoDiv.classList.add('visible');
+            agentInfoDiv.classList.add('visible', 'collapsed');
         }
 
         function toggleAgentInfo() {
