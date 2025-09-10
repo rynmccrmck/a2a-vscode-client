@@ -64,3 +64,6 @@ yarn.lock
 
 # Yarn Integrity file
 .yarn-integrity
+
+todo.txt
+repomix-output.xml
