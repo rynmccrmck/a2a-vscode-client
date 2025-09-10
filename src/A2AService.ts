@@ -104,6 +104,32 @@ export class A2AService {
                                     state: parsed.result.status?.state,
                                     timestamp: new Date().toISOString()
                                 });
+                            } else if (parsed.result?.role && parsed.result?.parts) {
+                            // This is a Message object - process all parts
+                                const textParts: string[] = [];
+                                const dataParts: any[] = [];
+                                
+                                parsed.result.parts.forEach((part: any) => {
+                                    if (part.kind === 'text' && part.text) {
+                                        textParts.push(part.text);
+                                    } else if (part.kind === 'data' && part.data) {
+                                        dataParts.push({
+                                            data: part.data,
+                                            mimeType: part.mimeType,
+                                            name: part.name
+                                        });
+                                    }
+                                });
+                                
+                                if (textParts.length > 0 || dataParts.length > 0) {
+                                    onStream({
+                                        type: 'message-parts',
+                                        text: textParts.join(''),
+                                        dataParts: dataParts,
+                                        messageId: parsed.result.messageId,
+                                        role: parsed.result.role
+                                    });
+                                }
                             }
 
                         } catch (parseError) {

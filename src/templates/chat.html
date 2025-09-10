@@ -417,6 +417,185 @@
             transform: translateX(20px);
             background-color: white;
         }
+
+        .data-part {
+            margin-top: 8px;
+            border: 1px solid var(--vscode-widget-border);
+            border-radius: 4px;
+        }
+        .data-header {
+            padding: 6px 10px;
+            background-color: var(--vscode-button-secondaryBackground);
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .data-content pre {
+            margin: 0;
+            padding: 10px;
+            font-size: 11px;
+            background-color: var(--vscode-textCodeBlock-background);
+        }
+        .status-indicator {
+            padding: 4px 8px;
+            margin: 2px 0;
+            background-color: var(--vscode-notifications-background);
+            font-size: 11px;
+            text-align: center;
+            border-radius: 12px;
+        }
+        .status-badge {
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: bold;
+            color: white;
+            background-color: var(--vscode-progressBar-background);
+        }
+        .status-indicator.with-text {
+            padding: 8px 12px;
+            background-color: var(--vscode-textCodeBlock-background);
+            border-left: 3px solid var(--vscode-progressBar-background);
+            margin: 4px 0;
+        }
+
+        .status-header {
+            margin-bottom: 4px;
+        }
+
+        .status-text {
+            font-size: 12px;
+            line-height: 1.3;
+        }
+        .file-attachments {
+            border: 1px solid var(--vscode-input-border);
+            border-radius: 4px;
+            padding: 8px;
+            margin-bottom: 8px;
+            background: var(--vscode-input-background);
+            display: none;
+        }
+
+        .file-attachments.visible {
+            display: block;
+        }
+
+        .file-preview {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 8px;
+            border-radius: 3px;
+            margin: 2px 0;
+            background: var(--vscode-textCodeBlock-background);
+            border: 1px solid var(--vscode-widget-border);
+        }
+
+        .file-preview img {
+            max-width: 32px;
+            max-height: 32px;
+            border-radius: 3px;
+        }
+
+        .file-icon {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--vscode-button-secondaryBackground);
+            border-radius: 3px;
+            font-size: 14px;
+        }
+
+        .file-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .file-name {
+            font-size: 11px;
+            font-weight: bold;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-size {
+            font-size: 10px;
+            color: var(--vscode-descriptionForeground);
+        }
+
+        .file-remove {
+            cursor: pointer;
+            color: var(--vscode-errorForeground);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+
+        .file-remove:hover {
+            background: var(--vscode-list-hoverBackground);
+        }
+
+        .file-button {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            background-color: var(--vscode-button-secondaryBackground);
+            color: var(--vscode-button-secondaryForeground);
+            cursor: pointer;
+            margin-right: 4px;
+        }
+
+        .file-button:hover {
+            background-color: var(--vscode-button-hoverBackground);
+        }
+
+        .message-files {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid var(--vscode-widget-border);
+        }
+
+        .message-file {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px;
+            margin: 2px 0;
+            background: var(--vscode-textCodeBlock-background);
+            border-radius: 3px;
+            font-size: 11px;
+        }
+
+        /* Drop zone styles */
+        .drop-zone {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 123, 255, 0.1);
+            border: 2px dashed var(--vscode-button-background);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            border-radius: 4px;
+        }
+
+        .drop-zone.visible {
+            display: flex;
+        }
+
+        .drop-message {
+            padding: 20px;
+            background: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -459,15 +638,28 @@
                 <div class="message system">Enter an agent URL above and click "Check Agent" to start!</div>
             </div>
             
+            <!-- File attachments area -->
+            <div class="file-attachments" id="fileAttachments"></div>
+
+            <!-- Input area with file support -->
             <div class="input-row">
+                <input type="file" id="fileInput" multiple style="display: none;" accept="image/*,text/*,.pdf,.doc,.docx">
+                <button onclick="selectFiles()" class="file-button" id="fileBtn" disabled title="Attach files">📎</button>
                 <input type="text" id="messageInput" placeholder="Type your message..." disabled>
                 <button onclick="sendMessage()" id="sendMessageBtn" disabled>Send</button>
+            </div>
+
+            <!-- Drop zone overlay -->
+            <div class="drop-zone" id="dropZone">
+                <div class="drop-message">Drop files here to attach</div>
             </div>
         </div>
     </div>
 
     <script>
         const vscode = acquireVsCodeApi();
+        let attachedFiles = [];
+        const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
         let agentConnected = false;
         let currentAgentUrl = '';
         let useStreaming = true;
@@ -486,14 +678,58 @@
             vscode.postMessage({ type: 'checkAgent', url: url });
         }
 
+        function addMessageWithFiles(text, files, sender) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message ' + sender;
+            
+            if (text) {
+                const textDiv = document.createElement('div');
+                textDiv.textContent = text;
+                messageDiv.appendChild(textDiv);
+            }
+            
+            if (files && files.length > 0) {
+                const filesDiv = document.createElement('div');
+                filesDiv.className = 'message-files';
+                
+                files.forEach(file => {
+                    const fileDiv = document.createElement('div');
+                    fileDiv.className = 'message-file';
+                    fileDiv.innerHTML = `
+                        ${file.preview.startsWith('data:image/') 
+                            ? `<img src="${file.preview}" alt="${file.name}">` 
+                            : `<div class="file-icon">${file.preview}</div>`
+                        }
+                        <div class="file-info">
+                            <div class="file-name">${file.name}</div>
+                            <div class="file-size">${formatFileSize(file.size)}</div>
+                        </div>
+                    `;
+                    filesDiv.appendChild(fileDiv);
+                });
+                
+                messageDiv.appendChild(filesDiv);
+            }
+            
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            return messageDiv;
+        }
+
         function sendMessage() {
             const input = document.getElementById('messageInput');
             const message = input.value.trim();
             
-            if (!message || !agentConnected) return;
+            if (!message && attachedFiles.length === 0) return;
+            if (!agentConnected) return;
             
-            addMessage(message, 'user');
+            // Display the message with files
+            addMessageWithFiles(message, attachedFiles, 'user');
+            
             input.value = '';
+            const filesToSend = [...attachedFiles]; // Copy the array
+            clearAttachedFiles(); // Clear UI
             disableSendButton();
             
             // Reset message tracking for new interaction
@@ -503,6 +739,7 @@
                 type: 'sendMessage', 
                 url: currentAgentUrl, 
                 message: message,
+                files: filesToSend, // Add files to the message
                 useStreaming: useStreaming,
                 taskId: currentTaskId,
                 contextId: currentContextId
@@ -633,6 +870,32 @@
             }
         }
 
+        function addMessageWithParts(text, dataParts = []) {
+            const messageDiv = addMessage(text || '', 'agent');
+            
+            // Add collapsible data parts
+            dataParts.forEach((dataPart, index) => {
+                const dataContainer = document.createElement('div');
+                dataContainer.className = 'data-part';
+                dataContainer.innerHTML = `
+                    <div class="data-header" onclick="toggleDataPart(this)">
+                        Data Part ${dataPart.name || index + 1} ▼
+                    </div>
+                    <div class="data-content" style="display: none;">
+                        <pre>${JSON.stringify(dataPart.data, null, 2)}</pre>
+                    </div>
+                `;
+                messageDiv.appendChild(dataContainer);
+            });
+        }
+
+        function toggleDataPart(header) {
+            const content = header.nextElementSibling;
+            const isHidden = content.style.display === 'none';
+            content.style.display = isHidden ? 'block' : 'none';
+            header.textContent = header.textContent.replace(isHidden ? '▼' : '▲', isHidden ? '▲' : '▼');
+        }
+
         function processStreamingData(data) {
             messageSequence++;
             
@@ -657,50 +920,193 @@
                 case 'task-update':
                     handleTaskUpdate(data);
                     break;
+                case 'message-parts':
+                    addMessageWithParts(data.text, data.dataParts);
+                    break;
                 default:
                     // Fallback for old format
                     handleLegacyFormat(data);
             }
         }
 
-        function handleStatusUpdate(data) {
-            if (data.statusOnly && !data.text) {
-                // Pure status update without message content - show as badge only
-                addStatusMessage(data);
-            } else if (data.text && data.text.trim()) {
-                // Message with text content
-                const messageDiv = addMessage(data.text, 'agent');
+        function addStatusIndicator(state, statusInfo = {}) {
+            const messagesDiv = document.getElementById('messages');
+            const statusDiv = document.createElement('div');
+            statusDiv.className = 'status-indicator';
+            statusDiv.innerHTML = `<span class="status-badge ${state}">${state.toUpperCase()}</span> Task ${state}`;
+            messagesDiv.appendChild(statusDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function selectFiles() {
+            document.getElementById('fileInput').click();
+        }
+
+        function setupFileHandling() {
+            const fileInput = document.getElementById('fileInput');
+            const chatSection = document.querySelector('.chat-section');
+            
+            fileInput.addEventListener('change', handleFileSelect);
+            
+            // Drag and drop
+            chatSection.addEventListener('dragover', handleDragOver);
+            chatSection.addEventListener('dragleave', handleDragLeave);
+            chatSection.addEventListener('drop', handleDrop);
+        }
+
+        function handleFileSelect(event) {
+            const files = Array.from(event.target.files);
+            processFiles(files);
+            event.target.value = ''; // Reset input
+        }
+
+        function handleDragOver(event) {
+            event.preventDefault();
+            document.getElementById('dropZone').classList.add('visible');
+        }
+
+        function handleDragLeave(event) {
+            if (!event.relatedTarget || !event.currentTarget.contains(event.relatedTarget)) {
+                document.getElementById('dropZone').classList.remove('visible');
+            }
+        }
+
+        function handleDrop(event) {
+            event.preventDefault();
+            document.getElementById('dropZone').classList.remove('visible');
+            
+            const files = Array.from(event.dataTransfer.files);
+            processFiles(files);
+        }
+
+        async function processFiles(files) {
+            for (const file of files) {
+                if (file.size > MAX_FILE_SIZE) {
+                    addMessage(`File "${file.name}" is too large (max 10MB)`, 'system');
+                    continue;
+                }
                 
-                // Add header and details toggle if we have data parts
-                if (data.status) {
-                    // Convert to structured message with header
-                    messageDiv.classList.add('status-detail');
+                try {
+                    const fileData = await readFileAsBase64(file);
+                    const preview = await generatePreview(file);
                     
-                    // Create text content div
-                    const textDiv = document.createElement('div');
-                    textDiv.textContent = data.text;
-                    
-                    // Create header
-                    const header = document.createElement('div');
-                    header.className = 'artifact-header';
-                    header.innerHTML = `
-                        <span>💬 Status Update</span>
-                        <span class="artifact-status">${data.status.state}</span>
-                    `;
-                    
-                    // Clear original content and rebuild structure
-                    messageDiv.innerHTML = '';
-                    messageDiv.appendChild(header);
-                    messageDiv.appendChild(textDiv);
-                    
-                    addDetailsToggle(messageDiv, {
-                        'State': data.status.state,
-                        'Task ID': data.status.taskId,
-                        'Timestamp': new Date(data.status.timestamp).toLocaleString(),
-                        'Final': data.status.final
-                    }, 'Status Details');
+                    attachedFiles.push({
+                        name: file.name,
+                        mimeType: file.type || 'application/octet-stream',
+                        size: file.size,
+                        data: fileData,
+                        preview: preview
+                    });
+                } catch (error) {
+                    addMessage(`Failed to process file "${file.name}": ${error.message}`, 'system');
                 }
             }
+            updateFileDisplay();
+        }
+
+        function readFileAsBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const base64 = reader.result.split(',')[1]; // Remove data:mime;base64, prefix
+                    resolve(base64);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function generatePreview(file) {
+            if (file.type.startsWith('image/')) {
+                return await createImagePreview(file);
+            } else {
+                return createFileIcon(file);
+            }
+        }
+
+        function createImagePreview(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function createFileIcon(file) {
+            const extension = file.name.split('.').pop()?.toLowerCase() || '';
+            const icons = {
+                'pdf': '📄',
+                'doc': '📝', 'docx': '📝',
+                'txt': '📄',
+                'json': '📋',
+                'csv': '📊',
+                'default': '📎'
+            };
+            return icons[extension] || icons.default;
+        }
+
+        function updateFileDisplay() {
+            const container = document.getElementById('fileAttachments');
+            
+            if (attachedFiles.length === 0) {
+                container.classList.remove('visible');
+                return;
+            }
+            
+            container.classList.add('visible');
+            container.innerHTML = attachedFiles.map((file, index) => `
+                <div class="file-preview">
+                    ${file.preview.startsWith('data:image/') 
+                        ? `<img src="${file.preview}" alt="${file.name}">` 
+                        : `<div class="file-icon">${file.preview}</div>`
+                    }
+                    <div class="file-info">
+                        <div class="file-name" title="${file.name}">${file.name}</div>
+                        <div class="file-size">${formatFileSize(file.size)}</div>
+                    </div>
+                    <div class="file-remove" onclick="removeFile(${index})" title="Remove file">×</div>
+                </div>
+            `).join('');
+        }
+
+        function removeFile(index) {
+            attachedFiles.splice(index, 1);
+            updateFileDisplay();
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        function clearAttachedFiles() {
+            attachedFiles = [];
+            updateFileDisplay();
+        }
+
+        function handleStatusUpdate(data) {
+            if (data.statusOnly) {
+                addStatusIndicator(data.status.state, data.status);
+            } else if (data.text && data.text.trim()) {
+                addStatusIndicatorWithText(data.status.state, data.text, data.status);
+            }
+        }
+
+        function addStatusIndicatorWithText(state, text, statusInfo = {}) {
+            const messagesDiv = document.getElementById('messages');
+            const statusDiv = document.createElement('div');
+            statusDiv.className = 'status-indicator with-text';
+            statusDiv.innerHTML = `
+                <div class="status-header">
+                    <span class="status-badge ${state}">${state.toUpperCase()}</span>
+                </div>
+                <div class="status-text">${text}</div>
+            `;
+            messagesDiv.appendChild(statusDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
 
         function handleArtifactUpdate(data) {
@@ -951,6 +1357,7 @@
                         document.getElementById('messageInput').disabled = false;
                         document.getElementById('sendMessageBtn').disabled = false;
                         document.getElementById('newTaskBtn').disabled = false;
+                        document.getElementById('fileBtn').disabled = false;
                         updateTaskDisplay();
                         // No longer adding "Connected to agent" message - shown in agent header
                     } else {
@@ -960,6 +1367,7 @@
                         document.getElementById('messageInput').disabled = true;
                         document.getElementById('sendMessageBtn').disabled = true;
                         document.getElementById('newTaskBtn').disabled = true;
+                        document.getElementById('fileBtn').disabled = true;
                     }
                     break;
 
@@ -1057,6 +1465,7 @@
                     break;
             }
         });
+    setupFileHandling();
     </script>
 </body>
 </html>
